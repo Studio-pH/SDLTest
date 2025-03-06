@@ -1,3 +1,0 @@
-/mnt/DiskU/sdltest/CMakeFiles/SDLTest.dir
-/mnt/DiskU/sdltest/CMakeFiles/edit_cache.dir
-/mnt/DiskU/sdltest/CMakeFiles/rebuild_cache.dir
