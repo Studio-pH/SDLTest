@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/SDLTest.dir/link.d CMakeFiles/SDLTest.dir/src/main.cpp.o -o SDLTest  -lSDL3 -lSDL3_image -lbox2d
