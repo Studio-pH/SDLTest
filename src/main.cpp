@@ -6,6 +6,7 @@
 #include <box2d/b2_common.h>
 #include <box2d/b2_math.h>
 #include <box2d/box2d.h>
+#include <cmath>
 #include <cstdio>
 #include <vector>
 #include "LTE.h"
@@ -45,8 +46,8 @@ struct Object{
         Shape.Set(_vertices,_count);
 
         fixtureDef.shape = &Shape;
-        fixtureDef.density = _density;   //密度
-        fixtureDef.friction = _friction; //摩擦
+        fixtureDef.density = _density;   //密度 1.0f
+        fixtureDef.friction = _friction; //摩擦 0.3f
         body->CreateFixture(&fixtureDef);
     }
 
@@ -65,13 +66,15 @@ void LTE_DrawShapes(Object* object){
     float Angle = object->body->GetAngle();
     
     for(int i=0;i<object->count;i++){
-        float x1 = camera.x+(Pos.x+object->vertices[i].x)*camera.zoom; 
-        float y1 = camera.y+(Pos.y+object->vertices[i].y)*camera.zoom; 
-        float x2 = camera.x+(Pos.x+object->vertices[(i+1)%object->count].x)*camera.zoom; 
-        float y2 = camera.y+(Pos.y+object->vertices[(i+1)%object->count].y)*camera.zoom;
+        float radius = sqrt((object->vertices[i].x*object->vertices[i].x)+(object->vertices[i].y*object->vertices[i].y));
+        float x1 = camera.x+WINDOW_WIDTH/2+(Pos.x+radius*cos(acos(object->vertices[i].x/radius)+Angle))*camera.zoom; 
+        float y1 = camera.y+WINDOW_HEIGHT/2+(Pos.y+radius*sin(asin(object->vertices[i].y/radius)+Angle))*camera.zoom; 
+        float x2 = camera.x+WINDOW_WIDTH/2+(Pos.x+radius*cos(acos(object->vertices[(i+1)%object->count].x/radius)+Angle))*camera.zoom; 
+        float y2 = camera.y+WINDOW_HEIGHT/2+(Pos.y+radius*sin(asin(object->vertices[(i+1)%object->count].y/radius)+Angle))*camera.zoom; 
+
         SDL_RenderLine(renderer, x1, y1, x2, y2);
     }
-    // To be continued
+    //BUG in this
 }
 /*
 void DrawBox(Object* box){
@@ -113,7 +116,12 @@ int main(int argc, char* argv[]) {
     Box2d();
     //Object box1(&world,0.0f,4.0f,1.0f,1.0f,10.0f,0.3f);
     //Object box2(&world,1.0f,4.0f,1.0f,1.0f,10.0f,0.3f);
-
+    b2Vec2 vertices[5]={
+        b2Vec2(0.5,0.5),b2Vec2(-0.5,0.5),
+        b2Vec2(-0.5,-0.5),b2Vec2(0.5,-0.5),
+        b2Vec2(1.0,0.0),
+    };
+    Object box(&world,b2Vec2(0.0f,0.4f),5,vertices,1.0f,0.3f);
     while(keep){
         SDL_PollEvent(&event);
         if(event.type == SDL_EVENT_QUIT){
@@ -129,7 +137,7 @@ int main(int argc, char* argv[]) {
         
         //DrawBox(&box1); 
         //DrawBox(&box2);
-
+        LTE_DrawShapes(&box);
         SDL_RenderPresent(renderer);
         SDL_Log("Event: %d", event.type);
         SDL_Delay(50);
@@ -175,4 +183,3 @@ void Destroy(){
     SDL_DestroyRenderer(renderer);
     SDL_Quit();
 }
-
