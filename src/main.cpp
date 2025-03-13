@@ -1,8 +1,11 @@
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3_image/SDL_image.h>
 #include <algorithm>
+#include <box2d/b2_body.h>
 #include <box2d/b2_common.h>
 #include <box2d/b2_math.h>
 #include <box2d/box2d.h>
@@ -31,12 +34,13 @@ struct Object{
     //构造函数
     Object( b2World* world,
             b2Vec2 position,
+            b2BodyType bodytype,
             int32 _count,
             b2Vec2 _vertices[],
             float _density,float _friction
             ){
         
-        bodyDef.type = b2_dynamicBody;//动态身体
+        bodyDef.type = bodytype;    //b2_staticBody,b2_kinematicBody,b2_dynamicBody
         bodyDef.position.Set(position.x, position.y);
         body = world->CreateBody(&bodyDef);
         
@@ -61,17 +65,26 @@ struct Object{
     b2FixtureDef fixtureDef;
 };
 
+float ToWPosX(float x){
+    return camera.x+WINDOW_WIDTH/2+x*camera.zoom;
+}
+
+float ToWPosY(float y){
+    return WINDOW_HEIGHT-(camera.y+WINDOW_HEIGHT/2+y*camera.zoom);
+}
+
 void LTE_DrawShapes(Object* object){
     b2Vec2 Pos = object->body->GetPosition();
     float Angle = object->body->GetAngle();
-    
+    //SDL_Log("Angle%.2f\n",Angle);
     for(int i=0;i<object->count;i++){
+        float x1,y1,x2,y2;
         float radius = sqrt((object->vertices[i].x*object->vertices[i].x)+(object->vertices[i].y*object->vertices[i].y));
-        float x1 = camera.x+WINDOW_WIDTH/2+(Pos.x+radius*cos(acos(object->vertices[i].x/radius)+Angle))*camera.zoom; 
-        float y1 = camera.y+WINDOW_HEIGHT/2+(Pos.y+radius*sin(asin(object->vertices[i].y/radius)+Angle))*camera.zoom; 
-        float x2 = camera.x+WINDOW_WIDTH/2+(Pos.x+radius*cos(acos(object->vertices[(i+1)%object->count].x/radius)+Angle))*camera.zoom; 
-        float y2 = camera.y+WINDOW_HEIGHT/2+(Pos.y+radius*sin(asin(object->vertices[(i+1)%object->count].y/radius)+Angle))*camera.zoom; 
-
+        x1 = ToWPosX(Pos.x+radius*cos(acos(object->vertices[i].x/radius)+Angle)); 
+        y1 = ToWPosY(Pos.y+radius*sin(asin(object->vertices[i].y/radius)+Angle));
+        x2 = ToWPosX(Pos.x+radius*cos(acos(object->vertices[(i+1)%object->count].x/radius)+Angle)); 
+        y2 = ToWPosY(Pos.y+radius*sin(asin(object->vertices[(i+1)%object->count].y/radius)+Angle));
+        //SDL_Log("x1:%.2f, y1:%.2f   x2:%.2f, y2:%.2f\n",x1,y1,x2,y2); 
         SDL_RenderLine(renderer, x1, y1, x2, y2);
     }
     //BUG in this
@@ -91,20 +104,6 @@ void DrawBox(Object* box){
     
     SDL_RenderRect(renderer, &Rect);
 }*/
-int Box2d(){
-    b2BodyDef groundBodyDef;
-    groundBodyDef.position.Set(0.0f, -10.0f);
-
-    b2Body* groundBody = world.CreateBody(&groundBodyDef);
-
-    b2PolygonShape groundBox;
-    groundBox.SetAsBox(50.0f, 10.0f);
-
-    groundBody->CreateFixture(&groundBox, 0.0f);
-
-    return 0;
-}
-
 int Init();
 void Destroy();
 
@@ -113,15 +112,26 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    Box2d();
+    //Box2d();
     //Object box1(&world,0.0f,4.0f,1.0f,1.0f,10.0f,0.3f);
     //Object box2(&world,1.0f,4.0f,1.0f,1.0f,10.0f,0.3f);
     b2Vec2 vertices[5]={
+        b2Vec2(0.7,0.1),
         b2Vec2(0.5,0.5),b2Vec2(-0.5,0.5),
-        b2Vec2(-0.5,-0.5),b2Vec2(0.5,-0.5),
-        b2Vec2(1.0,0.0),
+        b2Vec2(-0.5,-0.7),b2Vec2(0.5,-0.5)
     };
-    Object box(&world,b2Vec2(0.0f,0.4f),5,vertices,1.0f,0.3f);
+    Object box(&world,b2Vec2(0.0f,1.4f),b2_dynamicBody,5,vertices,1.0f,0.3f);
+    
+    b2Vec2 vertices2[4] = {
+        b2Vec2(2.0f,0.0f),
+        b2Vec2(-2.0f,0.0f),
+        b2Vec2(-2.0f,-1.0f),
+        b2Vec2(1.8f,-1.0f)
+    };
+
+    Object ground(&world,b2Vec2(0.0f,0.0f),b2_staticBody,4,vertices2,1.0f,1.0f);
+    
+    SDL_FRect R;
     while(keep){
         SDL_PollEvent(&event);
         if(event.type == SDL_EVENT_QUIT){
@@ -138,8 +148,10 @@ int main(int argc, char* argv[]) {
         //DrawBox(&box1); 
         //DrawBox(&box2);
         LTE_DrawShapes(&box);
+        LTE_DrawShapes(&ground);
+
         SDL_RenderPresent(renderer);
-        SDL_Log("Event: %d", event.type);
+        //SDL_Log("Event: %d", event.type);
         SDL_Delay(50);
     }
 
